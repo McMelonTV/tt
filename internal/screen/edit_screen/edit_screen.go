@@ -19,6 +19,9 @@ type EditScreen struct {
 
 	cursorX uint
 	cursorY uint
+
+	windowWidth  int
+	windowHeight int
 }
 
 func Create(filePath string) EditScreen {
@@ -49,6 +52,9 @@ func Create(filePath string) EditScreen {
 
 		cursorX: 0,
 		cursorY: 0,
+
+		windowWidth:  0,
+		windowHeight: 0,
 	}
 }
 
@@ -58,7 +64,6 @@ func (m EditScreen) Init() tea.Cmd {
 
 func (m EditScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c":
@@ -151,14 +156,22 @@ func (m EditScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.fileContent[m.cursorY] = fmt.Sprintf("%s%s%s", before, string(msg.Runes), after)
 			m.cursorX += uint(len(string(msg.Runes)))
 		}
+	case tea.WindowSizeMsg:
+		m.windowWidth = msg.Width
+		m.windowHeight = msg.Height
 	}
 
 	return m, nil
 }
 
 func (m EditScreen) View() string {
-	s := "TinyText"
-	s += "\n===============\n"
+	headerStart, headerText, headerEnd := "\u001B[47;100m", "TinyText", "\u001B[0m"
+	if m.windowWidth < len(headerText) {
+		return ""
+	}
+	headerSpacing := strings.Repeat(" ", m.windowWidth-len(headerText))
+	headerSpacingLeft, headerSpacingRight := headerSpacing[:len(headerSpacing)/2], headerSpacing[len(headerSpacing)/2:]
+	s := fmt.Sprintf("\n%s\n", fmt.Sprintf("%s%s%s%s%s", headerStart, headerSpacingLeft, headerText, headerSpacingRight, headerEnd))
 
 	for y, l := range m.fileContent {
 		var line string
