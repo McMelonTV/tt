@@ -13,7 +13,7 @@ import (
 
 type EditScreen struct {
 	fileType *types.FileType
-	filePath *string
+	filePath string
 
 	fileContent []string
 
@@ -43,7 +43,7 @@ func Create(filePath string) EditScreen {
 	fileContent := strings.Split(fileStr, "\n")
 
 	return EditScreen{
-		filePath: &filePath,
+		filePath: filePath,
 
 		fileContent: fileContent,
 
@@ -62,6 +62,18 @@ func (m EditScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c":
+			stat, err := os.Stat(m.filePath)
+			if err != nil {
+				panic(err)
+			}
+
+			fileText := strings.Join(m.fileContent, "\n")
+
+			err = os.WriteFile(m.filePath, []byte(fileText), stat.Mode())
+			if err != nil {
+				panic(err)
+			}
+
 			return m, tea.Quit
 		case "up":
 			if m.cursorY > 0 {
