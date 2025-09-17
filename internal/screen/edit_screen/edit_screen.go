@@ -126,6 +126,18 @@ func (m EditScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.cursorY -= 1
 				}
 			}
+		case "delete":
+			if m.cursorX != uint(len(m.fileContent[m.cursorY])) {
+				line := m.fileContent[m.cursorY]
+				before, after := line[:m.cursorX], line[m.cursorX+1:]
+				m.fileContent[m.cursorY] = fmt.Sprintf("%s%s", before, after)
+			} else {
+				if m.cursorY < uint(len(m.fileContent)-1) {
+					line, lineAfter := m.fileContent[m.cursorY], m.fileContent[m.cursorY+1]
+					m.fileContent[m.cursorY] = fmt.Sprintf("%s%s", line, lineAfter)
+					m.fileContent = slices.Delete(m.fileContent, int(m.cursorY+1), int(m.cursorY+2))
+				}
+			}
 		case "enter":
 			line := m.fileContent[m.cursorY]
 			before, after := line[:m.cursorX], line[m.cursorX:]
