@@ -14,7 +14,7 @@ var Args struct {
 func main() {
 	arg.MustParse(&Args)
 
-	screen := tea.NewProgram(edit_screen.Create(Args.FilePath))
+	screen := tea.NewProgram(edit_screen.Create(Args.FilePath), tea.WithAltScreen())
 	if _, err := screen.Run(); err != nil {
 		panic(err)
 	}
