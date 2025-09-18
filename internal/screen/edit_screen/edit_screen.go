@@ -151,10 +151,9 @@ func (s EditScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case tea.KeyLeft:
-			//FIXME: wrong movement with visual cursor != cursor
 			{
-				if s.cursorX > 0 {
-					s.updateCursorXPosition(s.cursorX - 1)
+				if s.visualCursorX > 0 {
+					s.updateCursorXPosition(s.visualCursorX - 1)
 				} else {
 					if s.cursorY > 0 {
 						s.updateCursorYPosition(s.cursorY - 1)
