@@ -65,96 +65,116 @@ func (m EditScreen) Init() tea.Cmd {
 func (m EditScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c":
-			stat, err := os.Stat(m.filePath)
-			if err != nil {
-				panic(err)
-			}
+		switch msg.Type {
+		case tea.KeyCtrlC:
+			{
+				stat, err := os.Stat(m.filePath)
+				if err != nil {
+					panic(err)
+				}
 
-			fileText := strings.Join(m.fileContent, "\n")
+				fileText := strings.Join(m.fileContent, "\n")
 
-			err = os.WriteFile(m.filePath, []byte(fileText), stat.Mode())
-			if err != nil {
-				panic(err)
-			}
+				err = os.WriteFile(m.filePath, []byte(fileText), stat.Mode())
+				if err != nil {
+					panic(err)
+				}
 
-			return m, tea.Quit
-		case "up":
-			if m.cursorY > 0 {
-				m.cursorY--
-				lineWidth := uint(len(m.fileContent[m.cursorY]))
-				m.cursorX = math.ClampUintMinMax(m.cursorX, 0, lineWidth)
+				return m, tea.Quit
 			}
-		case "down":
-			if m.cursorY < uint(len(m.fileContent)-1) {
-				m.cursorY++
-				lineWidth := uint(len(m.fileContent[m.cursorY]))
-				m.cursorX = math.ClampUintMinMax(m.cursorX, 0, lineWidth)
-			}
-		case "left":
-			if m.cursorX > 0 {
-				m.cursorX--
-			} else {
+		case tea.KeyUp:
+			{
 				if m.cursorY > 0 {
 					m.cursorY--
 					lineWidth := uint(len(m.fileContent[m.cursorY]))
-					m.cursorX = lineWidth
+					m.cursorX = math.ClampUintMinMax(m.cursorX, 0, lineWidth)
 				}
 			}
-		case "right":
-			if m.cursorX < uint(len(m.fileContent[m.cursorY])) {
-				m.cursorX++
-			} else {
+		case tea.KeyDown:
+			{
 				if m.cursorY < uint(len(m.fileContent)-1) {
 					m.cursorY++
-					m.cursorX = 0
+					lineWidth := uint(len(m.fileContent[m.cursorY]))
+					m.cursorX = math.ClampUintMinMax(m.cursorX, 0, lineWidth)
 				}
 			}
-		case "tab":
-			line := m.fileContent[m.cursorY]
-			before, after := line[:m.cursorX], line[m.cursorX:]
-			m.fileContent[m.cursorY] = fmt.Sprintf("%s%s%s", before, "    ", after)
-			m.cursorX += uint(len("    "))
-		case "backspace":
-			if m.cursorX != 0 {
+		case tea.KeyLeft:
+			{
+				if m.cursorX > 0 {
+					m.cursorX--
+				} else {
+					if m.cursorY > 0 {
+						m.cursorY--
+						lineWidth := uint(len(m.fileContent[m.cursorY]))
+						m.cursorX = lineWidth
+					}
+				}
+			}
+		case tea.KeyRight:
+			{
+				if m.cursorX < uint(len(m.fileContent[m.cursorY])) {
+					m.cursorX++
+				} else {
+					if m.cursorY < uint(len(m.fileContent)-1) {
+						m.cursorY++
+						m.cursorX = 0
+					}
+				}
+			}
+		case tea.KeyTab:
+			{
 				line := m.fileContent[m.cursorY]
-				before, after := line[:m.cursorX-1], line[m.cursorX:]
-				m.fileContent[m.cursorY] = fmt.Sprintf("%s%s", before, after)
-				m.cursorX -= 1
-			} else {
-				if m.cursorY > 0 {
-					lineBefore, line := m.fileContent[m.cursorY-1], m.fileContent[m.cursorY]
-					m.fileContent[m.cursorY-1] = fmt.Sprintf("%s%s", lineBefore, line)
-					m.fileContent = slices.Delete(m.fileContent, int(m.cursorY), int(m.cursorY+1))
-					m.cursorX = uint(len(lineBefore))
-					m.cursorY -= 1
+				before, after := line[:m.cursorX], line[m.cursorX:]
+				m.fileContent[m.cursorY] = fmt.Sprintf("%s%s%s", before, "    ", after)
+				m.cursorX += uint(len("    "))
+			}
+		case tea.KeyBackspace:
+			{
+				if m.cursorX != 0 {
+					line := m.fileContent[m.cursorY]
+					before, after := line[:m.cursorX-1], line[m.cursorX:]
+					m.fileContent[m.cursorY] = fmt.Sprintf("%s%s", before, after)
+					m.cursorX -= 1
+				} else {
+					if m.cursorY > 0 {
+						lineBefore, line := m.fileContent[m.cursorY-1], m.fileContent[m.cursorY]
+						m.fileContent[m.cursorY-1] = fmt.Sprintf("%s%s", lineBefore, line)
+						m.fileContent = slices.Delete(m.fileContent, int(m.cursorY), int(m.cursorY+1))
+						m.cursorX = uint(len(lineBefore))
+						m.cursorY -= 1
+					}
 				}
 			}
-		case "delete":
-			if m.cursorX != uint(len(m.fileContent[m.cursorY])) {
+		case tea.KeyDelete:
+			{
+				if m.cursorX != uint(len(m.fileContent[m.cursorY])) {
+					line := m.fileContent[m.cursorY]
+					before, after := line[:m.cursorX], line[m.cursorX+1:]
+					m.fileContent[m.cursorY] = fmt.Sprintf("%s%s", before, after)
+				} else {
+					if m.cursorY < uint(len(m.fileContent)-1) {
+						line, lineAfter := m.fileContent[m.cursorY], m.fileContent[m.cursorY+1]
+						m.fileContent[m.cursorY] = fmt.Sprintf("%s%s", line, lineAfter)
+						m.fileContent = slices.Delete(m.fileContent, int(m.cursorY+1), int(m.cursorY+2))
+					}
+				}
+			}
+		case tea.KeyEnter:
+			{
 				line := m.fileContent[m.cursorY]
-				before, after := line[:m.cursorX], line[m.cursorX+1:]
-				m.fileContent[m.cursorY] = fmt.Sprintf("%s%s", before, after)
-			} else {
-				if m.cursorY < uint(len(m.fileContent)-1) {
-					line, lineAfter := m.fileContent[m.cursorY], m.fileContent[m.cursorY+1]
-					m.fileContent[m.cursorY] = fmt.Sprintf("%s%s", line, lineAfter)
-					m.fileContent = slices.Delete(m.fileContent, int(m.cursorY+1), int(m.cursorY+2))
-				}
+				before, after := line[:m.cursorX], line[m.cursorX:]
+				m.fileContent[m.cursorY] = fmt.Sprintf("%s", before)
+				m.fileContent = slices.Insert(m.fileContent, int(m.cursorY+1), fmt.Sprintf("%s", after))
+				m.cursorY += 1
+				m.cursorX = 0
 			}
-		case "enter":
-			line := m.fileContent[m.cursorY]
-			before, after := line[:m.cursorX], line[m.cursorX:]
-			m.fileContent[m.cursorY] = fmt.Sprintf("%s", before)
-			m.fileContent = slices.Insert(m.fileContent, int(m.cursorY+1), fmt.Sprintf("%s", after))
-			m.cursorY += 1
-			m.cursorX = 0
 		default:
-			line := m.fileContent[m.cursorY]
-			before, after := line[:m.cursorX], line[m.cursorX:]
-			m.fileContent[m.cursorY] = fmt.Sprintf("%s%s%s", before, string(msg.Runes), after)
-			m.cursorX += uint(len(string(msg.Runes)))
+			{
+				line := m.fileContent[m.cursorY]
+				before, after := line[:m.cursorX], line[m.cursorX:]
+				m.fileContent[m.cursorY] = fmt.Sprintf("%s%s%s", before, string(msg.Runes), after)
+				m.cursorX += uint(len(string(msg.Runes)))
+			}
 		}
 	case tea.WindowSizeMsg:
 		m.windowWidth = msg.Width
