@@ -12,7 +12,7 @@ import (
 )
 
 type EditScreen struct {
-	fileType *types.FileType
+	fileType types.FileType
 	filePath string
 
 	fileContent []string
@@ -51,29 +51,44 @@ func (s *EditScreen) updateCursorYPosition(y uint) {
 	s.updateCursorYPositions(y, y)
 }
 
-func Create(filePath string) EditScreen {
-	file, err := os.ReadFile(filePath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			_, err := os.Create(filePath)
-			if err != nil {
+func Create(path *string) EditScreen {
+	var filePath string
+	var fileContent []string
+	var fileType types.FileType
+
+	if path != nil {
+		filePath = *path
+		fileType = types.FileTypePersistent
+
+		file, err := os.ReadFile(*path)
+		if err != nil {
+			if os.IsNotExist(err) {
+				_, err := os.Create(*path)
+				if err != nil {
+					panic(err)
+				}
+				file, err = os.ReadFile(*path)
+				if err != nil {
+					panic(err)
+				}
+			} else {
 				panic(err)
 			}
-			file, err = os.ReadFile(filePath)
-			if err != nil {
-				panic(err)
-			}
-		} else {
-			panic(err)
 		}
+
+		fileStr := string(file)
+
+		fileContent = strings.Split(fileStr, "\n")
+	} else {
+		filePath = ""
+		fileType = types.FileTypeTemporary
+
+		fileContent = make([]string, 0)
 	}
-
-	fileStr := string(file)
-
-	fileContent := strings.Split(fileStr, "\n")
 
 	return EditScreen{
 		filePath: filePath,
+		fileType: fileType,
 
 		fileContent: fileContent,
 
@@ -88,26 +103,28 @@ func Create(filePath string) EditScreen {
 	}
 }
 
-func (s *EditScreen) Init() tea.Cmd {
+func (s EditScreen) Init() tea.Cmd {
 	return nil
 }
 
-func (s *EditScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (s EditScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC:
 			{
-				stat, err := os.Stat(s.filePath)
-				if err != nil {
-					panic(err)
-				}
+				if s.fileType == types.FileTypePersistent {
+					stat, err := os.Stat(s.filePath)
+					if err != nil {
+						panic(err)
+					}
 
-				fileText := strings.Join(s.fileContent, "\n")
+					fileText := strings.Join(s.fileContent, "\n")
 
-				err = os.WriteFile(s.filePath, []byte(fileText), stat.Mode())
-				if err != nil {
-					panic(err)
+					err = os.WriteFile(s.filePath, []byte(fileText), stat.Mode())
+					if err != nil {
+						panic(err)
+					}
 				}
 
 				return s, tea.Quit
@@ -134,6 +151,7 @@ func (s *EditScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case tea.KeyLeft:
+			//FIXME: wrong movement with visual cursor != cursor
 			{
 				if s.cursorX > 0 {
 					s.updateCursorXPosition(s.cursorX - 1)
@@ -204,6 +222,10 @@ func (s *EditScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		default:
 			{
+				if s.cursorY == uint(len(s.fileContent)) {
+					s.fileContent = slices.Insert(s.fileContent, len(s.fileContent), "")
+				}
+
 				line := s.fileContent[s.cursorY]
 				before, after := line[:s.cursorX], line[s.cursorX:]
 				s.fileContent[s.cursorY] = fmt.Sprintf("%s%s%s", before, string(msg.Runes), after)
@@ -218,7 +240,7 @@ func (s *EditScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return s, nil
 }
 
-func (s *EditScreen) View() string {
+func (s EditScreen) View() string {
 	headerStart, headerText, headerEnd := "\u001B[47;100m", "TinyText", "\u001B[0m"
 	if s.windowWidth < len(headerText) {
 		return ""
